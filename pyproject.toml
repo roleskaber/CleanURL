@@ -8,6 +8,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "fastapi>=0.121.3",
     "greenlet>=3.2.4",
+    "redis>=7.1.0",
     "sqlalchemy>=2.0.44",
     "uvicorn>=0.38.0",
 ]
