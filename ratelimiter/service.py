@@ -1,30 +1,43 @@
-from fastapi import HTTPException, Request, status, Depends
-from typing import Annotated
+from functools import lru_cache
+from time import time
+import random
+from redis.asyncio import Redis
 
-from ratelimiter.redis import RateLimiter, get_rate_limiter
+
+@lru_cache
+def get_redis() -> Redis:
+    return Redis(host='localhost', port=6379)
 
 
-def rate_limiter_factory(
-        endpoint: str,
-        max_requests: int,
-        window_seconds: int,
-):
-    async def dependency(
-            request: Request,
-            rate_limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
+@lru_cache
+def get_rate_limiter() -> RateLimiter:
+    return RateLimiter(get_redis())
 
-    ):
-        ip_address = request.client.host
 
-        limited = await rate_limiter.is_limited(
-            ip_address,
-            endpoint,
-            max_requests,
-            window_seconds
-        )
-        if limited:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many requests",
-            )
-    return dependency
+class RateLimiter:
+    def __init__(self, redis: Redis):
+        self._redis = redis
+
+    async def is_limited(
+            self,
+            ip_address: str,
+            endpoint: str,
+            max_requests: int,
+            window_seconds: int
+    ) -> bool:
+        key = f"ratelimiter:{endpoint}:{ip_address}"
+        current_ms = time() * 1000
+        window_start_ms = current_ms - window_seconds * 1000
+        current_request = f"{time() * 1000}-{random.randint(0, 100_000)}"
+
+        async with self._redis.pipeline() as pipe:
+            await pipe.zremrangebyscore(key, 0, window_start_ms)
+            await pipe.zcard(key)
+            await pipe.zadd(key, {current_request: current_ms})
+            await pipe.expire(key, window_seconds)
+            res = await pipe.execute()
+        _, cardinality, _, _ = res
+        print(cardinality)
+        if max_requests > cardinality:
+            return False
+        return True

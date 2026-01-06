@@ -1,6 +1,6 @@
-from shortener import generate_slug
-from crud import add_slug_to_db, get_url_from_db
-from exceptions import NoUrlFoundException, ShortenerBaseException, SlugAlreadyExists
+from url_shortener.shortener import generate_slug
+from url_shortener.crud import add_slug_to_db, get_url_from_db
+from url_shortener.exceptions import NoUrlFoundException, SlugAlreadyExists
 
 
 async def generate_short_url(

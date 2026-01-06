@@ -1,8 +1,8 @@
-from database.db import new_session
-from database.models import ShortURL
+from url_shortener.database.db import new_session
+from url_shortener.database.models import ShortURL
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from exceptions import SlugAlreadyExists
+from url_shortener.exceptions import SlugAlreadyExists
 
 
 async def add_slug_to_db(slug: str, long_url: str):
